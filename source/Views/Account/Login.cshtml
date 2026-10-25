@@ -1,0 +1,35 @@
+@model LoginViewModel
+@{
+  ViewData["Title"] = "Sign in"; ViewData["Login"] = true;
+  var locs = (List<WebTest.Services.Location>)ViewBag.Locations;
+  var locked = ViewBag.Locked as WebTest.Services.Location;
+}
+@if (Store.CompanyName.Length > 0) { <div class="logintop">@Store.CompanyName</div> }
+<div class="logincard">
+  <div class="logo big"><svg class="ic xl"><use href="#i-cloud"/></svg></div>
+  <h1>Sign in</h1>
+  <p class="muted">Sign in with your domain account to access shared files.</p>
+  <form asp-action="Login" method="post" autocomplete="off">
+    <input type="hidden" asp-for="ReturnUrl" />
+    <partial name="_Errors" />
+    @if (TempData["Error"] is string e) { <div class="error"><ul><li>@e</li></ul></div> }
+    <label>Domain</label>
+    @if (locked != null)
+    {
+      <input type="hidden" asp-for="LocationId" />
+      <input value="@locked.Name (@locked.Domain)" disabled />
+    }
+    else
+    {
+      <select asp-for="LocationId">
+        @foreach (var l in locs) { <option value="@l.Id" selected="@(l.Id == Model.LocationId)">@l.Name (@l.Domain)</option> }
+      </select>
+    }
+    <label asp-for="Username">Username</label>
+    <input asp-for="Username" placeholder="username" autofocus autocomplete="username" />
+    <label asp-for="Password">Password</label>
+    <input asp-for="Password" placeholder="Password" autocomplete="current-password" />
+    <button type="submit" class="btn full">Sign in</button>
+  </form>
+  @if ((bool)(ViewBag.Sso ?? false)) { <a class="sso" asp-action="Windows">Sign in with Windows (single sign-on)</a> }
+</div>

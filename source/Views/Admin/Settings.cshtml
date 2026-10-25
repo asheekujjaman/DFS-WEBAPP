@@ -1,0 +1,50 @@
+@model SettingsViewModel
+@{ ViewData["Title"] = "Settings"; }
+<div class="panel">
+  <partial name="_AdminNav" />
+  <form asp-action="Settings" method="post" autocomplete="off">
+    <partial name="_Errors" />
+    <h3>Branding</h3>
+    <label asp-for="CompanyName">Company name (top of the sign-in page and header)</label>
+    <input asp-for="CompanyName" maxlength="80" />
+    <label asp-for="Banner">Announcement shown on the Home page (optional)</label>
+    <input asp-for="Banner" maxlength="250" />
+
+    <h3>Access and security</h3>
+    <label asp-for="AllowedGroups">Only these AD groups may sign in (optional)</label>
+    <input asp-for="AllowedGroups" placeholder="TEST\Domain Users, LAB\Staff" />
+    <p class="hint">Leave empty to allow every domain user. Administrators can always sign in.</p>
+    <div class="grid2">
+      <div><label asp-for="IdleMinutes">Sign out after idle (minutes)</label><input asp-for="IdleMinutes" type="number" /></div>
+      <div><label asp-for="AbsoluteHours">Sign out after (hours, even if active)</label><input asp-for="AbsoluteHours" type="number" /></div>
+      <div><label asp-for="MaxFailedLogins">Failed sign-ins before a block</label><input asp-for="MaxFailedLogins" type="number" /></div>
+      <div><label asp-for="LockoutMinutes">Block time (minutes)</label><input asp-for="LockoutMinutes" type="number" /></div>
+    </div>
+    <label class="check"><input type="checkbox" asp-for="Maintenance" /> Maintenance mode (only administrators can sign in)</label>
+    <label class="check"><input type="checkbox" asp-for="KickUsers" /> When saving, also sign out everyone who is not an administrator</label>
+
+    <h3>Files</h3>
+    <div class="grid2">
+      <div><label asp-for="MaxUploadMb">Maximum upload size per file (MB, 0 = no limit)</label><input asp-for="MaxUploadMb" type="number" /></div>
+      <div><label asp-for="RecycleDays">Keep deleted items for (days)</label><input asp-for="RecycleDays" type="number" /></div>
+    </div>
+    <label asp-for="BlockedExtensions">Blocked upload file types</label>
+    <input asp-for="BlockedExtensions" placeholder=".bat,.cmd,.ps1" />
+    <label class="check"><input type="checkbox" asp-for="ZipEnabled" /> Allow folder download as zip</label>
+    <label asp-for="ZipMaxMb">Maximum zip size (MB)</label>
+    <input asp-for="ZipMaxMb" type="number" />
+    <label class="check"><input type="checkbox" asp-for="PreviewEnabled" /> Allow file preview (PDF, images, Word, Excel, PowerPoint)</label>
+    <div class="grid2">
+      <div><label asp-for="PreviewMaxMb">Maximum size of a file to preview (MB)</label><input asp-for="PreviewMaxMb" type="number" /></div>
+      <div><label asp-for="LibreOfficePath">LibreOffice program (optional)</label><input asp-for="LibreOfficePath" placeholder="C:\Program Files\LibreOffice\program\soffice.exe" /></div>
+    </div>
+
+    <h3>Administrators and logs</h3>
+    <label asp-for="AdminUsers">Extra administrators (one per line, DOMAIN\user)</label>
+    <textarea asp-for="AdminUsers" rows="3"></textarea>
+    <p class="hint">Domain Admins, Enterprise Admins and local Administrators are administrators automatically.</p>
+    <label asp-for="AuditDays">Keep the audit log for (days)</label>
+    <input asp-for="AuditDays" type="number" />
+    <div class="lact"><button class="btn">Save settings</button></div>
+  </form>
+</div>

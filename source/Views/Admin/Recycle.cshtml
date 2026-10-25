@@ -1,0 +1,28 @@
+@model List<RecycleMeta>
+@{ ViewData["Title"] = "Recycle bin"; var loc = (Location)ViewBag.Loc; }
+<div class="panel">
+  <partial name="_AdminNav" />
+  <h2 class="h">Recycle bin: @loc.Name</h2>
+  <p class="muted">Deleted items are kept for the retention period set in Settings, then removed automatically.</p>
+  @if (ViewBag.Error is string err) { <div class="error"><ul><li>@err</li></ul></div> }
+  <div class="scroll"><table>
+    <thead><tr><th>Item</th><th>Original location</th><th>Deleted by</th><th>Deleted (UTC)</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var m in Model)
+    {
+      <tr>
+        <td><b>@m.Name</b> @if (m.IsDir) { <span class="chip">folder</span> }</td>
+        <td class="muted">/@m.OriginalRel</td><td>@m.DeletedBy</td><td class="muted">@m.DeletedAt.ToString("yyyy-MM-dd HH:mm")</td>
+        <td class="actions">
+          <form asp-action="Restore" method="post">
+            <input type="hidden" name="id" value="@loc.Id" /><input type="hidden" name="item" value="@m.Id" />
+            <button class="chip">Restore</button>
+          </form>
+        </td>
+      </tr>
+    }
+    </tbody>
+  </table></div>
+  @if (Model.Count == 0) { <div class="empty">The recycle bin is empty.</div> }
+  <div class="lact"><a class="btn alt" asp-action="Locations">Back</a></div>
+</div>

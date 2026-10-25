@@ -1,0 +1,33 @@
+@model List<Location>
+@{ ViewData["Title"] = "Locations"; var st = (Dictionary<string, LocStatus?>)ViewBag.Status; }
+<div class="panel">
+  <partial name="_AdminNav" />
+  <div class="top">
+    <h2 class="h">Domains and file locations</h2>
+    <a class="btn" asp-action="Edit"><svg class="ic"><use href="#i-plus"/></svg> Add location</a>
+  </div>
+  <div class="scroll"><table>
+    <thead><tr><th>Name</th><th>Domain</th><th>DFS / share path</th><th>Status</th><th>Delete mode</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var l in Model)
+    {
+      var s = st.TryGetValue(l.Id, out var v) ? v : null;
+      <tr>
+        <td><b>@l.Name</b> @if (!l.Enabled) { <span class="chip">disabled</span> }<div class="muted">@(l.WebUrl.Length > 0 ? l.WebUrl : "")</div></td>
+        <td>@l.Domain</td>
+        <td class="path">@l.Path</td>
+        <td>@if (l.Enabled) { <span class="st @(s?.State ?? "")"><i class="dot"></i><em>@(s == null ? "n/a" : s.State == "up" ? "Up" : s.State == "degraded" ? "Degraded" : "Down")</em></span> }</td>
+        <td>@l.DeleteMode</td>
+        <td class="actions">
+          <a class="chip" asp-action="Test" asp-route-id="@l.Id">Test</a>
+          <a class="chip" asp-action="Recycle" asp-route-id="@l.Id">Recycle bin</a>
+          <a class="chip" asp-action="Edit" asp-route-id="@l.Id">Edit</a>
+          <form asp-action="Delete" method="post" data-confirm="Remove @l.Name from the portal? (Files are not touched.)">
+            <input type="hidden" name="id" value="@l.Id" /><button class="chip del" title="Remove"><svg class="ic"><use href="#i-trash"/></svg></button>
+          </form>
+        </td>
+      </tr>
+    }
+    </tbody>
+  </table></div>
+</div>

@@ -1,0 +1,32 @@
+@model LocationEditModel
+@{ ViewData["Title"] = "Location"; }
+<div class="panel narrow">
+  <h2 class="h">@(string.IsNullOrEmpty(Model.Id) ? "Add location" : "Edit location")</h2>
+  <form asp-action="Edit" method="post" autocomplete="off">
+    <input type="hidden" asp-for="Id" />
+    <partial name="_Errors" />
+    <label asp-for="Name">Display name</label>
+    <input asp-for="Name" placeholder="LAB" />
+    <label asp-for="Domain">Domain</label>
+    <input asp-for="Domain" placeholder="lab.com" />
+    <label asp-for="Path">DFS / share path</label>
+    <input asp-for="Path" placeholder="\\lab.com\OfficeData" />
+    <label asp-for="WebUrl">Web address (optional)</label>
+    <input asp-for="WebUrl" placeholder="files.lab.com" />
+    <p class="hint">If users open the portal with this address, the sign-in page is locked to this domain.</p>
+    <label asp-for="DeleteMode">When a user deletes something</label>
+    <select asp-for="DeleteMode">
+      <option value="Recycle">Move to the recycle bin (recommended)</option>
+      <option value="Permanent">Delete permanently</option>
+      <option value="Disabled">Do not allow deleting</option>
+    </select>
+    <label asp-for="AllowedGroups">Only these AD groups may open this location (optional)</label>
+    <input asp-for="AllowedGroups" placeholder="Sales, TEST\Managers" />
+    <p class="hint">Leave empty to allow everyone who can sign in. NTFS permissions always apply on top.</p>
+    <label class="check"><input type="checkbox" asp-for="Enabled" /> Location is enabled</label>
+    <div class="lact">
+      <button class="btn">Save</button>
+      <a class="btn alt" asp-action="Locations">Cancel</a>
+    </div>
+  </form>
+</div>

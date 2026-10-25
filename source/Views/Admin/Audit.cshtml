@@ -1,0 +1,30 @@
+@model List<AuditEvent>
+@{ ViewData["Title"] = "Audit log"; var type = ViewBag.Type as string; var user = ViewBag.User as string; int days = ViewBag.Days; }
+<div class="panel">
+  <partial name="_AdminNav" />
+  <form method="get" class="toolbar">
+    <select name="type">
+      <option value="">All events</option>
+      @foreach (var t in new[] { "signin", "signin-fail", "logout", "timeout", "kicked", "upload", "download", "preview", "delete", "folder", "admin", "error" })
+      {
+        <option value="@t" selected="@(t == type)">@t</option>
+      }
+    </select>
+    <input name="user" value="@user" placeholder="User contains..." />
+    <select name="days">
+      @foreach (var dd in new[] { 1, 7, 30, 90 }) { <option value="@dd" selected="@(dd == days)">Last @dd day(s)</option> }
+    </select>
+    <button class="btn">Filter</button>
+    <a class="btn alt" asp-action="AuditCsv" asp-route-type="@type" asp-route-user="@user" asp-route-days="@days"><svg class="ic"><use href="#i-down"/></svg> Export CSV</a>
+  </form>
+  <div class="scroll"><table>
+    <thead><tr><th>Time (UTC)</th><th>Event</th><th>User</th><th>IP</th><th>Location</th><th>Detail</th></tr></thead>
+    <tbody>
+    @foreach (var e in Model)
+    {
+      <tr><td class="muted">@e.Time.ToString("yyyy-MM-dd HH:mm:ss")</td><td class="@(e.Ok ? "" : "bad-t")">@e.Type</td><td>@e.User</td><td class="muted">@e.Ip</td><td class="muted">@e.Loc</td><td class="muted">@e.Detail</td></tr>
+    }
+    </tbody>
+  </table></div>
+  @if (Model.Count == 0) { <div class="empty">No events found.</div> }
+</div>

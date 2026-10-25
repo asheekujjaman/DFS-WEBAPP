@@ -1,0 +1,206 @@
+==========================================================================
+ FILE SHARE PORTAL v2 - IMPLEMENTATION GUIDE (IIS + HTTPS, no install script)
+==========================================================================
+You only need the folder  "site"  from this package. Everything below is done by
+hand in IIS Manager and PowerShell - nothing is installed by a script.
+
+--------------------------------------------------------------------------
+ 0. WHAT YOU NEED
+--------------------------------------------------------------------------
+  - Windows Server 2016 or newer, joined to your domain (a member server is best;
+    a domain controller works for testing only).
+  - IIS role with: Web Server, Static Content, Default Document, HTTP Errors, Request Filtering,
+    and (only for single sign-on) Windows Authentication.
+  - ".NET 8 Hosting Bundle" (NOT the SDK): https://dotnet.microsoft.com/download/dotnet/8.0
+    Install IIS first, then the Hosting Bundle, then run  iisreset  once.
+  - An HTTPS certificate for your site name (for example files.hm.com) - from your internal CA
+    or a public CA. Import it into  Local Computer > Personal.
+  - Optional: LibreOffice (free) for Word / Excel / PowerPoint preview.
+  - DNS record for the site name pointing to this server. Firewall: allow TCP 443 (and 80 for the redirect).
+
+--------------------------------------------------------------------------
+ 1. COPY THE FILES
+--------------------------------------------------------------------------
+  Copy everything inside the "site" folder to  C:\inetpub\FileShare
+  (web.config and WebTest.dll must be directly inside that folder).
+
+--------------------------------------------------------------------------
+ 2. APPLICATION POOL  (IIS Manager > Application Pools > Add Application Pool)
+--------------------------------------------------------------------------
+  Name: FileSharePool     .NET CLR version: No Managed Code     Pipeline: Integrated
+  Then select it > Advanced Settings:
+     Start Mode ................ AlwaysRunning
+     Idle Time-out (minutes) ... 0
+     Regular Time Interval ..... 0        (no automatic recycle during working hours:
+                                           recycling signs every user out)
+     Load User Profile ......... True
+     Identity .................. ApplicationPoolIdentity  (simple; fine for local shares), or a
+                                domain service account / gMSA if the recycle-bin clean-up must
+                                reach remote DFS servers (see section 6)
+
+--------------------------------------------------------------------------
+ 3. WEBSITE + HTTPS  (Sites > Add Website)
+--------------------------------------------------------------------------
+  Site name: FileShare     Application pool: FileSharePool     Physical path: C:\inetpub\FileShare
+  Binding: Type https, Port 443, Host name  files.hm.com , tick "Require Server Name Indication",
+           SSL certificate: choose yours.
+  Add a second binding  http / 80 / same host name  (the portal redirects it to HTTPS).
+  Several names (files.lab.com, files.hm.com) = add one https binding per name (same site).
+  If your HTTPS port is not 443, set "HttpsPort" in appsettings.json.
+
+--------------------------------------------------------------------------
+ 4. PERMISSIONS ON THE WEB FOLDER  (PowerShell as Administrator)
+--------------------------------------------------------------------------
+    icacls C:\inetpub\FileShare\App_Data /grant "IIS AppPool\FileSharePool:(OI)(CI)M"
+    icacls C:\inetpub\FileShare\logs     /grant "IIS AppPool\FileSharePool:(OI)(CI)M"
+  (If you used a service account, use that account instead of "IIS AppPool\FileSharePool".)
+  Protect App_Data: only administrators and the pool identity should have access
+  (it holds settings, audit log and encrypted cookie keys - never passwords).
+
+--------------------------------------------------------------------------
+ 5. IIS AUTHENTICATION  (Site > Authentication)
+--------------------------------------------------------------------------
+  Normal password sign-in:  Anonymous Authentication = Enabled, Windows Authentication = Disabled.
+  Windows single sign-on (optional):  enable BOTH, then set  "WindowsSso": true  in appsettings.json.
+  The sign-in page then shows a "Sign in with Windows" button. See section 8.
+
+--------------------------------------------------------------------------
+ 6. FIRST START
+--------------------------------------------------------------------------
+  Browse  https://files.hm.com  -> the SETUP page opens:
+     Company name, location name, domain (hm.com), DFS path (\\hm.com\CompanyData),
+     web address (files.hm.com), then a DOMAIN ADMIN user name and password.
+  After saving you are in the Admin area. Add more domains: Admin > Locations > Add location
+  (name, domain, DFS path, web address). Users of each domain pick it on the sign-in page, or it is
+  chosen automatically by the web address they used.
+
+  Settings that are NOT in the website (edit C:\inetpub\FileShare\appsettings.json, then recycle the pool):
+     "RequireHttps": true      keep true in production (set false only for a quick http test)
+     "LogonMode": "Credentials"  or "Network"   (see section 7)
+     "WindowsSso": false       true = show the Windows single sign-on button
+     "StatusPort": 445         port used for the Up / Down check
+
+--------------------------------------------------------------------------
+ 7. PASSWORD HANDLING AND LOGON MODE (read this)
+--------------------------------------------------------------------------
+  What the site does with a password:
+   - It arrives only inside the HTTPS request, is passed to Windows once to be checked, and is then
+     dropped. It is never written to a file, log, audit entry, cookie, session or the page.
+   - The password box is always emptied before a page is shown again. Failed sign-ins are counted and
+     blocked before Active Directory is contacted.
+   - Honest limit: .NET text strings cannot be wiped from memory on demand, so a password can exist in
+     the server's memory for a short moment until garbage collection. Anyone who can read the memory of
+     the web server (administrators of that server) could in theory see it. Keep the web server
+     locked down, use a dedicated member server, and use HTTPS only.
+  Two modes ("LogonMode" in appsettings.json):
+   Credentials (default)  Windows keeps the user's credentials in its own secure store (LSASS) for the
+                          session, so the site can open DFS / remote file servers with no extra AD
+                          setup. The site itself does not keep the password.
+   Network                Windows keeps NO credentials at all. Most secure, but remote file servers
+                          are only reachable after you configure Kerberos delegation (section 8).
+                          Local folders on the web server itself work without any extra setup.
+  Best security: users on domain PCs use "Sign in with Windows" (Kerberos), so no password ever
+  reaches the website.
+
+--------------------------------------------------------------------------
+ 8. KERBEROS SINGLE SIGN-ON AND DELEGATION (optional, advanced - not tested by the author)
+--------------------------------------------------------------------------
+  Single sign-on needs: Windows Authentication enabled in IIS, "WindowsSso": true, the site name in the
+  browser's intranet zone, and an SPN for the site name on the pool's account, for example
+     setspn -S HTTP/files.hm.com  HM\svc-fileshare      (use the computer account if the pool runs as
+                                                          ApplicationPoolIdentity)
+  To let the portal open files on OTHER servers as the user (Network mode or single sign-on), configure
+  constrained delegation in Active Directory: Active Directory Users and Computers > the web server (or
+  service account) > Delegation > "Trust this computer for delegation to specified services only" >
+  "Use any authentication protocol" > Add the "cifs" service of every file server / DFS target.
+  Test with one user first. If it does not work, use LogonMode "Credentials".
+
+--------------------------------------------------------------------------
+ 9. FOLDER PERMISSIONS ON THE FILE SERVER (NTFS decides everything)
+--------------------------------------------------------------------------
+  See Setup-Permissions.ps1 (sample). Key points:
+   - New folders on a drive root inherit "Authenticated Users: Modify". Remove inheritance on every
+     top-level shared folder (icacls /inheritance:r) and grant specific groups:
+        read only  (OI)(CI)RX        read + write  (OI)(CI)M
+   - Read permission = browse, search, preview, download. Write permission = also upload, new folder, delete.
+   - Folders a user cannot open are hidden from that user.
+   - RECYCLE BIN: deleting moves items into a hidden ".recycle" folder in the location root. Create it once
+     per location root with the permissions in Setup-Permissions.ps1 (users may add items but not read them).
+     If it is missing, delete shows an error. Admin > Locations > Recycle bin lets administrators restore;
+     items older than the retention days (Settings) are purged automatically by the web server.
+     The purge runs as the application pool identity: give that account (or the web server's computer
+     account, e.g. HM\WEBSERVER$) Modify on ".recycle".
+   - The portal's "Delete mode" per location: Recycle (default), Permanent, or Disabled.
+
+--------------------------------------------------------------------------
+ 10. PREVIEW OF PDF, IMAGES, WORD, EXCEL, POWERPOINT
+--------------------------------------------------------------------------
+  PDF and images (png jpg gif bmp webp) open inside the page with the browser's own viewer.
+  Word / Excel / PowerPoint (doc docx xls xlsx ppt pptx odt ods odp rtf) are converted to PDF on the
+  server with LibreOffice (install it once, default location is detected, or set the path in
+  Admin > Settings), cached, and shown. Two conversions run at the same time at most, each limited to
+  60 seconds. Preview uses the same permission as download. Admin > Health shows whether LibreOffice was found.
+  The application pool identity must be allowed to run LibreOffice and write to App_Data\preview-cache.
+
+--------------------------------------------------------------------------
+ 11. ADMIN AREA - WHAT IS THERE
+--------------------------------------------------------------------------
+  Dashboard ........ active users (15 min), locations up, failed sign-ins, uploads / downloads today, status
+  Who is signed in . user, IP, browser, sign-in time, last activity, current folder; sign out one or all
+  Locations ........ add / edit / disable / remove, connection test (each DFS target), delete mode,
+                     allowed AD groups per location, recycle bin and restore
+  Audit log ........ sign-ins (ok / failed / blocked), logout, timeouts, uploads, downloads, previews,
+                     deletes, admin changes, errors; filter; CSV export
+  Settings ......... company name, announcement banner, sign-in groups, idle / absolute timeout,
+                     failed-sign-in limit and block time, maintenance mode, upload limit, blocked file types,
+                     zip on/off and maximum size, preview on/off and size, recycle retention, audit retention,
+                     extra administrators
+  System health .... version, memory, free disk space, running account, HTTPS check, configuration backup
+  Status colours ... Up = green, Degraded = amber (some DFS targets down), Down = RED.
+  The site checks every real DFS target of a namespace (port 445 and the share), not only the domain name.
+
+--------------------------------------------------------------------------
+ 12. SIZING FOR 200 USERS
+--------------------------------------------------------------------------
+  4 CPU cores, 8 GB RAM, fast disk, 1 Gbps network. Keep 20-50 GB free on the system drive (temporary
+  upload / zip files and the preview cache). Large uploads and zips are limited by network and disk, not
+  by the website. At most 3 zip downloads are prepared at the same time. Sessions live in memory:
+  recycling the pool or restarting IIS signs everybody out - do it outside working hours.
+
+--------------------------------------------------------------------------
+ 13. OPERATION, UPDATE, BACKUP
+--------------------------------------------------------------------------
+  Backup:  Admin > System health > Download backup (settings only) and copy the App_Data folder.
+  Update:  1) tell users, 2) stop the site in IIS, 3) copy the new files over C:\inetpub\FileShare but KEEP
+           the App_Data folder, 4) start the site.
+  Maintenance mode: Admin > Settings; tick "sign out everyone who is not an administrator".
+  Logs: Admin > Audit log. Startup problems: set stdoutLogEnabled="true" in web.config, look in
+        C:\inetpub\FileShare\logs, then set it back to false.
+
+--------------------------------------------------------------------------
+ 14. TROUBLESHOOTING
+--------------------------------------------------------------------------
+  HTTP 500.19 / 500.0 at start ........ Hosting Bundle not installed (install, then iisreset), or web.config damaged.
+  HTTP 500.30 ......................... the app failed to start: enable the stdout log (section 13).
+  HTTP 404.13 on big uploads .......... the site web.config limit (4 GB) was removed; restore it.
+  Page keeps asking to sign in ........ the pool recycled; check Idle Time-out and Regular Time Interval = 0.
+  "Cannot reach Active Directory" ..... DNS or domain name wrong, or the server cannot reach a domain controller.
+  Location shows Down ................. the DFS targets do not answer on port 445 - use Admin > Locations > Test.
+  User sees an empty list ............. the user has no NTFS permission (hidden by design).
+  Everyone can write .................. folders inherit "Authenticated Users: Modify" (section 9).
+  Delete fails with a message ......... the ".recycle" folder is missing or has wrong permissions (section 9).
+  Office preview says LibreOffice missing .. install LibreOffice or set its path in Admin > Settings.
+  Redirect loop or wrong port ......... set "HttpsPort" in appsettings.json to your real HTTPS port.
+
+--------------------------------------------------------------------------
+ 15. SECURITY CHECKLIST
+--------------------------------------------------------------------------
+  [ ] HTTPS binding with a trusted certificate; RequireHttps = true
+  [ ] Dedicated member server, not a domain controller
+  [ ] App_Data and the site folder writable only by administrators and the pool identity
+  [ ] No "Authenticated Users / Users / Everyone: Modify" on shared folders
+  [ ] Maintain a short list of administrators (Admin > Settings)
+  [ ] Review Admin > Audit log regularly; export it to your log archive
+  [ ] Keep Windows, IIS and the .NET Hosting Bundle updated
+
+See TEST-REPORT.txt for what was tested here and what you must test on your own servers first.

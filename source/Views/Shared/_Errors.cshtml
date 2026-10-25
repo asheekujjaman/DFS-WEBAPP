@@ -1,0 +1,6 @@
+@if (!ViewData.ModelState.IsValid)
+{
+  <div class="error"><ul>
+    @foreach (var e in ViewData.ModelState.Values.SelectMany(v => v.Errors)) { <li>@e.ErrorMessage</li> }
+  </ul></div>
+}

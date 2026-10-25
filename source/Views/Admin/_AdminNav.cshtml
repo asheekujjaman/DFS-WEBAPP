@@ -1,0 +1,11 @@
+@{ var cur = ViewContext.RouteData.Values["action"]?.ToString() ?? ""; }
+<nav class="tabs">
+  <a asp-action="Index" class="@(cur == "Index" ? "on" : "")">Dashboard</a>
+  <a asp-action="Sessions" class="@(cur == "Sessions" ? "on" : "")">Who is signed in</a>
+  <a asp-action="Locations" class="@(cur is "Locations" or "Edit" or "Test" or "Recycle" ? "on" : "")">Locations</a>
+  <a asp-action="Audit" class="@(cur == "Audit" ? "on" : "")">Audit log</a>
+  <a asp-action="Settings" class="@(cur == "Settings" ? "on" : "")">Settings</a>
+  <a asp-action="Health" class="@(cur == "Health" ? "on" : "")">System health</a>
+</nav>
+@if (TempData["Ok"] is string ok) { <div class="ok">@ok</div> }
+@if (TempData["Error"] is string er) { <div class="error"><ul><li>@er</li></ul></div> }

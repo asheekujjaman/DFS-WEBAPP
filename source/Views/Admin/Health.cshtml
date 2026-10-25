@@ -1,0 +1,19 @@
+@{ ViewData["Title"] = "System health"; var info = (Dictionary<string, string>)ViewBag.Info; }
+<div class="panel">
+  <partial name="_AdminNav" />
+  <h2 class="h">System health</h2>
+  <div class="scroll"><table>
+    <tbody>
+    @foreach (var kv in info) { <tr><td class="muted">@kv.Key</td><td>@kv.Value</td></tr> }
+    </tbody>
+  </table></div>
+  <h3>Configuration backup</h3>
+  <p class="muted">The backup contains your domains, paths and settings (no passwords).</p>
+  <div class="toolbar">
+    <a class="btn" asp-action="Backup"><svg class="ic"><use href="#i-down"/></svg> Download backup</a>
+    <form asp-action="RestoreConfig" method="post" enctype="multipart/form-data" class="toolbar" data-confirm="Replace the current configuration with this file?">
+      <input type="file" name="file" accept=".json" />
+      <button class="btn alt">Restore from file</button>
+    </form>
+  </div>
+</div>

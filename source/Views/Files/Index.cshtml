@@ -1,0 +1,133 @@
+@model BrowseViewModel
+@{
+  ViewData["Title"] = "Files";
+  var loc = Model.Loc.Id;
+  var parts = Model.Path.Length == 0 ? new string[0] : Model.Path.Split('/');
+  var acc = "";
+}
+<div class="panel">
+  @Html.AntiForgeryToken()
+  <div id="app" data-loc="@loc" data-path="@Model.Path" data-mode="@Model.Loc.DeleteMode"
+       data-upload-url="@Url.Action("Upload", "Files")" data-delete-url="@Url.Action("Delete", "Files")"
+       data-undo-url="@Url.Action("Undo", "Files")" data-count-url="@Url.Action("Count", "Files")"
+       data-preview-url="@Url.Action("Preview", "Files")" data-download-url="@Url.Action("Download", "Files")"></div>
+
+  <div class="top">
+    <nav class="crumbs">
+      <a asp-controller="Home" asp-action="Index"><svg class="ic"><use href="#i-home"/></svg> Locations</a>
+      <svg class="ic sep"><use href="#i-chev"/></svg><a asp-action="Index" asp-route-loc="@loc" asp-route-path="">@Model.Loc.Name</a>
+      @foreach (var p in parts)
+      {
+        acc = acc.Length == 0 ? p : acc + "/" + p;
+        <svg class="ic sep"><use href="#i-chev"/></svg><a asp-action="Index" asp-route-loc="@loc" asp-route-path="@acc">@p</a>
+      }
+    </nav>
+    <span class="badge @(Model.CanWrite ? "rw" : "ro")">
+      <svg class="ic"><use href="@(Model.CanWrite ? "#i-edit" : "#i-eye")"/></svg>
+      @(Model.CanWrite ? "Read & Write" : "Read only")
+    </span>
+  </div>
+
+  @if (!string.IsNullOrEmpty(Model.Error)) { <div class="error"><ul><li>@Model.Error</li></ul></div> }
+
+  <div class="toolbar">
+    <div class="searchbox"><svg class="ic"><use href="#i-search"/></svg><input id="search" placeholder="Search in this folder" /></div>
+    <div class="spacer"></div>
+    @if (Model.CanWrite)
+    {
+      <button class="btn" id="upBtn" type="button"><svg class="ic"><use href="#i-up"/></svg> Upload files</button>
+      <button class="btn" id="upFolderBtn" type="button"><svg class="ic"><use href="#i-folder"/></svg> Upload folder</button>
+      <button class="btn alt" id="nfBtn" type="button"><svg class="ic"><use href="#i-folder-plus"/></svg> New folder</button>
+    }
+    @if (Model.ZipEnabled)
+    {
+      <a class="btn alt" asp-action="DownloadFolder" asp-route-loc="@loc" asp-route-path="@Model.Path"><svg class="ic"><use href="#i-down"/></svg> Download zip</a>
+    }
+    <a class="btn alt" asp-action="Access" asp-route-loc="@loc" asp-route-path="@Model.Path"><svg class="ic"><use href="#i-shield"/></svg> Permissions</a>
+  </div>
+
+  @if (Model.CanWrite)
+  {
+    <form id="nf" asp-action="NewFolder" method="post" class="newfolder">
+      <input type="hidden" name="loc" value="@loc" />
+      <input type="hidden" name="path" value="@Model.Path" />
+      <input name="name" placeholder="Folder name" required maxlength="120" />
+      <button class="btn">Create</button>
+    </form>
+    <input type="file" id="fileInput" multiple hidden />
+    <input type="file" id="folderInput" webkitdirectory directory multiple hidden />
+  }
+
+  <div id="log"></div>
+
+  <div class="scroll">
+  <table id="grid">
+    <thead><tr><th>Name</th><th>Size</th><th>Modified</th><th></th></tr></thead>
+    <tbody>
+    @if (Model.Path.Length > 0)
+    {
+      var up = Model.Path.Contains('/') ? Model.Path[..Model.Path.LastIndexOf('/')] : "";
+      <tr><td colspan="4"><a class="name" asp-action="Index" asp-route-loc="@loc" asp-route-path="@up"><svg class="ic"><use href="#i-back"/></svg> Back</a></td></tr>
+    }
+    @foreach (var e in Model.Entries.OrderByDescending(x => x.IsDir).ThenBy(x => x.Name, StringComparer.OrdinalIgnoreCase))
+    {
+      var pk = e.IsDir ? "" : UiHelper.PreviewKind(e.Name);
+      <tr class="item">
+        <td>
+          @if (e.IsDir) { <a class="name" asp-action="Index" asp-route-loc="@loc" asp-route-path="@e.RelPath"><svg class="ic t-folder"><use href="#i-folder"/></svg> <b>@e.Name</b></a> }
+          else { <span class="name"><svg class="ic @UiHelper.Kind(e.Name)"><use href="#i-file"/></svg> @e.Name</span> }
+        </td>
+        <td class="muted">@(e.IsDir ? "-" : UiHelper.Size(e.Size))</td>
+        <td class="muted">@e.Modified.ToString("yyyy-MM-dd HH:mm")</td>
+        <td class="actions">
+          @if (e.IsDir)
+          {
+            if (Model.ZipEnabled) { <a class="chip" asp-action="DownloadFolder" asp-route-loc="@loc" asp-route-path="@e.RelPath"><svg class="ic"><use href="#i-down"/></svg> Zip</a> }
+          }
+          else
+          {
+            if (Model.PreviewEnabled && pk.Length > 0) { <button type="button" class="chip" data-view="@e.RelPath" data-name="@e.Name" data-kind="@pk"><svg class="ic"><use href="#i-eye"/></svg> View</button> }
+            <a class="chip" asp-action="Download" asp-route-loc="@loc" asp-route-path="@e.RelPath"><svg class="ic"><use href="#i-down"/></svg> Download</a>
+          }
+          @if (Model.CanDelete)
+          {
+            <button type="button" class="chip del" title="Delete" data-del="@e.RelPath" data-name="@e.Name" data-dir="@(e.IsDir ? "1" : "0")"><svg class="ic"><use href="#i-trash"/></svg></button>
+          }
+        </td>
+      </tr>
+    }
+    </tbody>
+  </table>
+  </div>
+  @if (Model.Entries.Count == 0 && string.IsNullOrEmpty(Model.Error))
+  {
+    <div class="empty"><svg class="ic xl"><use href="#i-folder"/></svg><br />This folder is empty</div>
+  }
+</div>
+
+<dialog id="delDlg">
+  <h3 id="delTitle">Delete?</h3>
+  <p id="delInfo" class="muted"></p>
+  <div id="delTypeBox" hidden>
+    <p id="delCount"></p>
+    <input id="delType" autocomplete="off" />
+  </div>
+  <div class="dlgact">
+    <button type="button" class="btn alt" id="delCancel">Cancel</button>
+    <button type="button" class="btn danger" id="delOk">Delete</button>
+  </div>
+</dialog>
+
+<dialog id="viewDlg" class="big">
+  <div class="vhead">
+    <h3 id="viewTitle">Preview</h3>
+    <div>
+      <a class="btn alt" id="viewDownload" href="#"><svg class="ic"><use href="#i-down"/></svg> Download</a>
+      <button type="button" class="btn" id="viewClose"><svg class="ic"><use href="#i-close"/></svg> Close</button>
+    </div>
+  </div>
+  <iframe id="viewFrame" title="Preview" hidden></iframe>
+  <div id="viewImg" class="imgbox" hidden></div>
+</dialog>
+<div id="toast" class="toast"></div>
+@section Scripts { <script src="~/js/files.js"></script> }

@@ -1,0 +1,19 @@
+@model LocStatus
+@{ ViewData["Title"] = "Test connection"; var loc = (Location)ViewBag.Loc; }
+<div class="panel">
+  <partial name="_AdminNav" />
+  <h2 class="h">Connection test: @loc.Name</h2>
+  <p class="muted">Checked just now. Each DFS target (real file server) is tested separately.</p>
+  <p><span class="st @Model.State"><i class="dot"></i><em>@(Model.State == "up" ? "Up" : Model.State == "degraded" ? "Degraded" : "Down")</em></span>
+     &nbsp; @Model.UpCount of @Model.Total target(s) reachable &nbsp; 24h uptime @Model.UptimePct %</p>
+  <div class="scroll"><table>
+    <thead><tr><th>Server</th><th>Share</th><th>Result</th><th>Response</th></tr></thead>
+    <tbody>
+    @foreach (var t in Model.Targets)
+    {
+      <tr><td>@t.Server</td><td>@t.Share</td><td class="@(t.Up ? "ok-t" : "bad-t")">@(t.Up ? "Reachable" : "Not reachable")</td><td>@(t.Up ? t.Ms + " ms" : "-")</td></tr>
+    }
+    </tbody>
+  </table></div>
+  <div class="lact"><a class="btn alt" asp-action="Locations">Back</a> <a class="btn" asp-action="Test" asp-route-id="@loc.Id">Test again</a></div>
+</div>

@@ -1,0 +1,32 @@
+@model HomeViewModel
+@{ ViewData["Title"] = "Locations"; var isAdmin = User.IsInRole("Admin"); }
+<div class="panel">
+  <div class="top">
+    <h2 class="h">File locations</h2>
+    @if (isAdmin)
+    {
+      <a class="btn" asp-controller="Admin" asp-action="Edit"><svg class="ic"><use href="#i-plus"/></svg> Add location</a>
+    }
+  </div>
+  @if (Model.Banner.Length > 0) { <div class="banner">@Model.Banner</div> }
+  <p class="muted">Server status refreshes automatically. Open a location to see the folders you have permission to use.</p>
+  @if (Model.Locations.Count == 0) { <div class="empty">No locations are available to your account.</div> }
+  <div class="cards" id="cards" data-status-url="@Url.Action("Status", "Home")">
+    @foreach (var l in Model.Locations)
+    {
+      <div class="lcard">
+        <div class="lhead">
+          <span class="name"><svg class="ic t-folder"><use href="#i-server"/></svg> <b>@l.Name</b></span>
+          <span class="st" id="st-@l.Id"><i class="dot"></i><em>Checking...</em></span>
+        </div>
+        <div class="muted">@l.Domain</div>
+        @if (isAdmin) { <div class="path">@l.Path</div> }
+        <div class="lact">
+          <a class="btn" asp-controller="Files" asp-action="Index" asp-route-loc="@l.Id">Open</a>
+          @if (isAdmin) { <a class="btn alt" asp-controller="Admin" asp-action="Edit" asp-route-id="@l.Id">Edit</a> }
+        </div>
+      </div>
+    }
+  </div>
+</div>
+@section Scripts { <script src="~/js/home.js"></script> }

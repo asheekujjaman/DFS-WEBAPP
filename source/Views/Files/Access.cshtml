@@ -1,0 +1,23 @@
+@model AccessReport
+@{ ViewData["Title"] = "Permissions"; }
+<div class="panel">
+  <div class="top">
+    <a class="btn alt" asp-action="Index" asp-route-loc="@Model.Loc" asp-route-path="@Model.Path"><svg class="ic"><use href="#i-back"/></svg> Back to folder</a>
+    <span class="badge @(Model.Write ? "rw" : "ro")">@(Model.Write ? "Read & Write" : Model.Read ? "Read only" : "No access")</span>
+  </div>
+  <h2>Permissions for: @Model.LocName /@Model.Path</h2>
+  <p class="muted">Signed in as <b>@Model.User</b>. Access = what the folder's NTFS rules allow for this user and the groups below.</p>
+  @if (Model.Error != null) { <div class="error"><ul><li>@Model.Error</li></ul></div> }
+  <h3>Your groups</h3>
+  <p class="groups">@foreach (var g in Model.Groups) { <span class="chip">@g</span> }</p>
+  <h3>Folder rules (highlighted = applies to you)</h3>
+  <div class="scroll"><table>
+    <thead><tr><th>Who</th><th>Type</th><th>Rights</th><th>Inherited</th></tr></thead>
+    <tbody>
+    @foreach (var r in Model.Rules)
+    {
+      <tr class="@(r.Applies ? "hit" : "")"><td>@r.Who</td><td>@r.Type</td><td>@r.Rights</td><td>@(r.Inherited ? "Yes" : "No")</td></tr>
+    }
+    </tbody>
+  </table></div>
+</div>

@@ -1,0 +1,47 @@
+FILE SHARE PORTAL v2 - TEST REPORT
+===================================
+Build: 0 errors, 0 warnings (.NET 8). No NuGet packages are used.
+
+HOW IT WAS TESTED
+  The whole site was run on Linux with a fake Windows layer (it switches on automatically when the
+  operating system is not Windows; it can NEVER be active on Windows). A headless browser (Chromium)
+  then clicked through every screen. Password "pw" signs in; real Windows calls were not involved.
+
+PASSED (about 90 checks)
+  Setup           first-run wizard; non-admin refused; admin accepted; company name saved
+  Sign-in         generic error text; password field cleared; throttle after repeated failures
+                  (per user; per address allows 4x more); blocked message; maintenance mode;
+                  global AD-group rule; session kick; absolute/idle timeouts exist
+  Status          Up (green), Degraded (amber, "1 of 2 targets"), Down (red); background polling;
+                  users see only state + ms (no server names, no paths); admin sees target detail
+  Files           hidden folders the user cannot open; read-only vs read-write badges and buttons;
+                  path traversal and ".recycle" access refused; upload, blocked file types,
+                  upload progress; new folder; download; folder zip; zip size limit and on/off;
+                  per-location AD group rule; disabled location hidden
+  Delete          recycle bin + Undo; folder delete needs the folder name typed; admin restore
+  Preview         images and PDF served inline; Word and Excel converted to PDF with LibreOffice
+                  and cached (second request served from cache); size limit; permission checked first
+  Admin           dashboard, who-is-signed-in (+ sign out one / all), audit log + CSV export,
+                  locations add/edit/disable/remove/test, recycle bin, settings, health,
+                  config backup (no passwords inside) and restore; non-admins cannot reach Admin
+  Security        strict Content-Security-Policy (no inline script or style anywhere), no browser
+                  console errors, X-Frame-Options, nosniff, Referrer-Policy, no-store caching,
+                  SameSite=Strict HttpOnly cookies, no Server header, anti-forgery on every POST,
+                  CSV formula-injection protection, HTTP -> HTTPS redirect when RequireHttps=true
+  Package         "site" folder published and started by itself; IIS web.config generated
+                  (in-process hosting, 4 GB upload limit)
+
+NOT TESTED (needs your real environment - test these first)
+  1. Real Active Directory sign-in (LogonUser) in both modes: Credentials and Network
+  2. Real NTFS enforcement through impersonation, and the effective-permission calculation
+  3. Real DFS lookup (NetDfsGetInfo): if it fails the site falls back to checking the server name in
+     the path; check "Admin > Locations > Test" shows your real DFS targets
+  4. Kerberos single sign-on (WindowsSso) and Kerberos delegation to file servers
+  5. Windows DPAPI protection of cookie keys, IIS hosting, certificate / HTTPS binding, HSTS
+  6. LibreOffice on Windows paths, and PDF display inside real browsers (the test browser has no
+     PDF viewer - the server returned correct PDF files)
+  7. Load test with 200 users (design is streaming/async, but it was not measured)
+
+NOT BUILT (ideas for a next version)
+  E-mail / Windows Event Log alerts when a location goes down; company logo upload; reorder
+  locations; manual block of a single user or IP address from the admin page.

@@ -1,0 +1,34 @@
+@model List<UserSession>
+@{ ViewData["Title"] = "Who is signed in"; }
+<div class="panel">
+  <partial name="_AdminNav" />
+  <div class="top">
+    <h2 class="h">Signed in now (@Model.Count)</h2>
+    <div class="toolbar">
+      <form asp-action="ClearBlocks" method="post" data-confirm="Clear all temporary sign-in blocks?"><button class="btn alt">Clear sign-in blocks</button></form>
+      <form asp-action="KickAll" method="post" data-confirm="Sign out everyone except you?"><button class="btn danger">Sign out everyone else</button></form>
+    </div>
+  </div>
+  <div class="scroll"><table>
+    <thead><tr><th>User</th><th>IP address</th><th>Browser</th><th>Signed in (UTC)</th><th>Last activity</th><th>Now viewing</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var s in Model)
+    {
+      var ua = s.Agent.Length > 48 ? s.Agent[..48] + "..." : s.Agent;
+      <tr>
+        <td><b>@s.Display</b> @if (s.IsAdmin) { <span class="chip">admin</span> }</td>
+        <td>@s.Ip</td>
+        <td class="muted">@ua</td>
+        <td class="muted">@s.Created.ToString("MM-dd HH:mm")</td>
+        <td class="muted">@((int)(DateTime.UtcNow - s.LastUsed).TotalMinutes) min ago</td>
+        <td class="muted">@(s.CurrentLoc.Length > 0 ? s.CurrentLoc + "/" + s.CurrentPath : "-")</td>
+        <td class="actions">
+          <form asp-action="Kick" method="post" data-confirm="Sign out @s.Display ?">
+            <input type="hidden" name="id" value="@s.Id" /><button class="chip del">Sign out</button>
+          </form>
+        </td>
+      </tr>
+    }
+    </tbody>
+  </table></div>
+</div>

@@ -1,0 +1,26 @@
+@model SetupViewModel
+@{ ViewData["Title"] = "Setup"; ViewData["Login"] = true; }
+<div class="logincard wide">
+  <div class="logo big"><svg class="ic xl"><use href="#i-server"/></svg></div>
+  <h1>First-time setup</h1>
+  <p class="muted">Register your first domain and DFS / share path, then confirm with a domain administrator account.</p>
+  <form asp-action="Index" method="post" autocomplete="off">
+    <partial name="_Errors" />
+    <label asp-for="CompanyName">Company name (shown on the sign-in page)</label>
+    <input asp-for="CompanyName" placeholder="Your company" />
+    <label asp-for="Name">Location display name</label>
+    <input asp-for="Name" placeholder="TEST" />
+    <label asp-for="Domain">Domain</label>
+    <input asp-for="Domain" placeholder="test.local" />
+    <label asp-for="Path">DFS / share path</label>
+    <input asp-for="Path" placeholder="\\test.local\Data" />
+    <label asp-for="WebUrl">Web address (optional)</label>
+    <input asp-for="WebUrl" placeholder="files.test.local" />
+    <hr />
+    <label asp-for="AdminUser">Domain admin username</label>
+    <input asp-for="AdminUser" placeholder="administrator" autocomplete="username" />
+    <label asp-for="AdminPassword">Domain admin password</label>
+    <input asp-for="AdminPassword" autocomplete="current-password" />
+    <button type="submit" class="btn full">Save and sign in</button>
+  </form>
+</div>
